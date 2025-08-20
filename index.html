@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sopa de Letras</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f8f8f8; }
+    h1 { margin: 20px; }
+    #grid { display: grid; margin: 20px auto; gap: 2px; }
+    .cell {
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid #ccc;
+      font-weight: bold; cursor: pointer;
+      user-select: none;
+      background: white;
+    }
+    .highlight { background: lightblue; }
+    .found { background: yellow; }
+    #words { margin-top: 20px; }
+    #words li { list-style: none; font-weight: bold; }
+    #words .found { text-decoration: line-through; color: green; }
+    #status { margin-top: 20px; font-size: 18px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>🥳 Sopa de Letras</h1>
+  <div id="grid"></div>
+  <ul id="words"></ul>
+  <div id="status">Palabras encontradas: 0 / 15</div>
+
+  <script>
+    const palabras = ["JAVASCRIPT","HTML","CSS","PYTHON","ANDROID","APPLE","NUBE","MOVIL","APLICACION","CODIGO","NAVEGADOR","SOFTWARE","JUEGO","WEB","DESARROLLO"];
+    const size = 12; // Tamaño de la cuadrícula
+    const gridElement = document.getElementById("grid");
+    const wordsElement = document.getElementById("words");
+    const statusElement = document.getElementById("status");
+
+    gridElement.style.gridTemplateColumns = `repeat(${size}, 30px)`;
+
+    // Crear matriz vacía
+    let grid = Array.from({length: size}, () => Array(size).fill(""));
+
+    // Funciones para colocar palabras en diferentes direcciones
+    function placeWord(word) {
+      const directions = [
+        {dr:0, dc:1}, {dr:0, dc:-1},
+        {dr:1, dc:0}, {dr:-1, dc:0},
+        {dr:1, dc:1}, {dr:1, dc:-1},
+        {dr:-1, dc:1}, {dr:-1, dc:-1}
+      ];
+      let placed = false;
+      while (!placed) {
+        let dir = directions[Math.floor(Math.random()*directions.length)];
+        let row = Math.floor(Math.random() * size);
+        let col = Math.floor(Math.random() * size);
+        let endRow = row + dir.dr * (word.length - 1);
+        let endCol = col + dir.dc * (word.length - 1);
+        if (endRow < 0 || endRow >= size || endCol < 0 || endCol >= size) continue;
+        let canPlace = true;
+        for (let i=0;i<word.length;i++) {
+          let r = row + dir.dr*i;
+          let c = col + dir.dc*i;
+          if (grid[r][c] !== "" && grid[r][c] !== word[i]) {
+            canPlace = false;
+            break;
+          }
+        }
+        if (!canPlace) continue;
+        for (let i=0;i<word.length;i++) {
+          let r = row + dir.dr*i;
+          let c = col + dir.dc*i;
+          grid[r][c] = word[i];
+        }
+        placed = true;
+      }
+    }
+
+    // Colocar todas las palabras
+    palabras.forEach(word => placeWord(word));
+
+    // Rellenar espacios vacíos con letras aleatorias
+    const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (grid[r][c] === "") {
+          grid[r][c] = letras[Math.floor(Math.random() * letras.length)];
+        }
+      }
+    }
+
+    // Pintar la cuadrícula
+    grid.forEach((row, r) => {
+      row.forEach((letter, c) => {
+        let div = document.createElement("div");
+        div.classList.add("cell");
+        div.innerText = letter;
+        div.dataset.row = r;
+        div.dataset.col = c;
+        gridElement.appendChild(div);
+      });
+    });
+
+    // Mostrar lista de palabras
+    palabras.forEach(p => {
+      let li = document.createElement("li");
+      li.innerText = p;
+      wordsElement.appendChild(li);
+    });
+
+    let startCell = null;
+    let selectedCells = [];
+    let foundCount = 0;
+
+    function updateStatus() {
+      statusElement.innerText = `Palabras encontradas: ${foundCount} / ${palabras.length}`;
+      if (foundCount === palabras.length) {
+        statusElement.innerText = "🎉 ¡Has encontrado todas las palabras!";
+      }
+    }
+
+    function clearHighlights() {
+      document.querySelectorAll(".highlight").forEach(el => el.classList.remove("highlight"));
+      selectedCells = [];
+    }
+
+    function getWordFromSelection() {
+      return selectedCells.map(cell => cell.innerText).join("");
+    }
+
+    function finishSelection() {
+      if (selectedCells.length > 0) {
+        let word = getWordFromSelection();
+        let reverse = word.split("").reverse().join("");
+        if (palabras.includes(word) || palabras.includes(reverse)) {
+          let alreadyFound = false;
+          document.querySelectorAll("#words li").forEach(li => {
+            if ((li.innerText === word || li.innerText === reverse) && li.classList.contains("found")) {
+              alreadyFound = true;
+            }
+          });
+          if (!alreadyFound) {
+            selectedCells.forEach(cell => cell.classList.add("found"));
+            document.querySelectorAll("#words li").forEach(li => {
+              if (li.innerText === word || li.innerText === reverse) li.classList.add("found");
+            });
+            foundCount++;
+            updateStatus();
+          }
+        }
+        clearHighlights();
+      }
+      startCell = null;
+    }
+
+    // Eventos de mouse
+    gridElement.addEventListener("mousedown", e => {
+      if (e.target.classList.contains("cell")) {
+        clearHighlights();
+        startCell = e.target;
+        startCell.classList.add("highlight");
+        selectedCells.push(startCell);
+      }
+    });
+
+    gridElement.addEventListener("mouseover", e => {
+      if (startCell && e.buttons === 1 && e.target.classList.contains("cell")) {
+        e.target.classList.add("highlight");
+        if (!selectedCells.includes(e.target)) selectedCells.push(e.target);
+      }
+    });
+
+    gridElement.addEventListener("mouseup", finishSelection);
+
+    // Eventos táctiles
+    gridElement.addEventListener("touchstart", e => {
+      if (e.target.classList.contains("cell")) {
+        clearHighlights();
+        startCell = e.target;
+        startCell.classList.add("highlight");
+        selectedCells.push(startCell);
+      }
+    });
+
+    gridElement.addEventListener("touchmove", e => {
+      let touch = e.touches[0];
+      let element = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (startCell && element && element.classList.contains("cell")) {
+        element.classList.add("highlight");
+        if (!selectedCells.includes(element)) selectedCells.push(element);
+      }
+    });
+
+    gridElement.addEventListener("touchend", finishSelection);
+
+    updateStatus();
+  </script>
+</body>
+</html>
