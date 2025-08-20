@@ -126,6 +126,8 @@
           document.querySelectorAll('#words li').forEach(li => {
             if (li.innerText === word || li.innerText === reverse) li.classList.add('found');
           });
+          // Mantener la selección en la cuadricula
+          selectedCells.forEach(cell => cell.classList.add('found'));
           foundCount++;
           updateStatus();
         }
